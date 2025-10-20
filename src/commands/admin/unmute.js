@@ -1,9 +1,4 @@
-/**
- * Desenvolvido por: Mkg
- * Refatorado por: Dev Gui
- *
- * @author Dev Gui
- */
+
 const {
   checkIfMemberIsMuted,
   unmuteMember,

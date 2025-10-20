@@ -10,7 +10,7 @@ module.exports = {
   name: "agendar-mensagem",
   description: "Agenda uma mensagem para ser enviada após um tempo definido.",
   commands: ["agendar", "agendar-mensagem"],
-  usage: `${PREFIX}agendar-mensagem mensagem / tempo
+  usage: `${PREFIX}agendar mensagem / tempo
   
 Exemplo: ${PREFIX}agendar-mensagem Reunião amanhã / 10m`,
   /**

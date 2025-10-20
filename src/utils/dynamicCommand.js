@@ -33,7 +33,6 @@ exports.dynamicCommand = async (paramsHandler, startProcess) => {
   const {
     commandName,
     fullMessage,
-    isLid,
     prefix,
     remoteJid,
     sendErrorReply,
