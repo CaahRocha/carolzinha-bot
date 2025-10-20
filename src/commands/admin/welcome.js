@@ -7,7 +7,7 @@ const {
 } = require(`${BASE_DIR}/utils/database`);
 
 module.exports = {
-  name: "welcome",
+  name: "Bem Vindo",
   description: "Ativo/desativo o recurso de boas-vindas no grupo.",
   commands: [
     "welcome",

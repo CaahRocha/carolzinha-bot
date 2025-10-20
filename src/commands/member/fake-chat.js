@@ -1,9 +1,4 @@
-/**
- * Desenvolvido por: Mkg
- * Refatorado por: Dev Gui
- *
- * @author Dev Gui
- */
+
 const { PREFIX } = require(`${BASE_DIR}/config`);
 const { InvalidParameterError } = require(`${BASE_DIR}/errors`);
 const { toUserJidOrLid } = require(`${BASE_DIR}/utils`);
