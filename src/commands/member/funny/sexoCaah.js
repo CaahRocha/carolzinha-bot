@@ -4,20 +4,38 @@ const { ASSETS_DIR, PREFIX } = require(`${BASE_DIR}/config`);
 
 module.exports = {
   name: "sexo",
-  description: "Sexo com a Caah.",
+  description: "sexo com a Caah.",
   commands: ["sexoCaah"],
-  usage: `${PREFIX}sexoCaah`,
+  usage: `${PREFIX}tiCaah [@alguem]`,
   /**
    * @param {CommandHandleProps} props
    * @returns {Promise<void>}
    */
-  handle: async ({ sendGifFromFile, userJid, groupMetadata }) => {
+  handle: async ({ sendGifFromFile, userJid, groupMetadata, args }) => {
     const participants = groupMetadata?.participants || [];
-
-    // Remove o próprio usuário da lista
     const otherParticipants = participants.filter(p => p.id !== userJid);
 
-    if (otherParticipants.length === 0) {
+    // Verifica se foi mencionado alguém
+    const mentionedJid = args.find(arg => arg.startsWith("@"));
+    let targetJid;
+
+    if (mentionedJid) {
+      // Converte @ para JID numérico
+      const mentionedNumber = onlyNumbers(mentionedJid);
+      const found = participants.find(p => onlyNumbers(p.id) === mentionedNumber);
+      if (found) {
+        targetJid = found.id;
+      }
+    }
+
+    // Se não encontrou ou não mencionou ninguém, sorteia
+    if (!targetJid && otherParticipants.length > 0) {
+      const randomIndex = Math.floor(Math.random() * otherParticipants.length);
+      targetJid = otherParticipants[randomIndex].id;
+    }
+
+    // Se ainda não tem target (grupo só tem você)
+    if (!targetJid) {
       await sendGifFromFile(
         path.resolve(ASSETS_DIR, "images", "funny", "caah.mp4"),
         `@${onlyNumbers(userJid)} tentou transar com a Caah, mas ela não está on 😢`,
@@ -26,15 +44,10 @@ module.exports = {
       return;
     }
 
-    // Sorteia um participante aleatório
-    const randomIndex = Math.floor(Math.random() * otherParticipants.length);
-    const targetJid = otherParticipants[randomIndex].id;
-
     await sendGifFromFile(
-      path.resolve(ASSETS_DIR, "images", "funny", "caah.mp4"), // Certifique-se de que esse arquivo existe
+      path.resolve(ASSETS_DIR, "images", "funny", "caah.mp4"),
       `@${onlyNumbers(userJid)} transou gostoso com a Caah @${onlyNumbers(targetJid)}! 🔥`,
       [userJid, targetJid]
     );
   },
 };
-``

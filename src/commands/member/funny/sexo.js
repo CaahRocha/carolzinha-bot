@@ -42,7 +42,7 @@ module.exports = {
 
     await sendGifFromFile(
       path.resolve(ASSETS_DIR, "images", "funny", "sexo.mp4"),
-      `@${userNumber} beijou @${targetNumber}!`,
+      `@${userNumber} Transou com @${targetNumber}!`,
       [userJid, targetJid]
     );
   },
