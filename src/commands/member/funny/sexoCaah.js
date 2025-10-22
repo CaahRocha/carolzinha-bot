@@ -34,7 +34,7 @@ module.exports = {
       targetJid = otherParticipants[randomIndex].id;
     }
 
-    // Se ainda não tem target (grupo só tem você)
+    
     if (!targetJid) {
       await sendGifFromFile(
         path.resolve(ASSETS_DIR, "images", "funny", "caah.mp4"),
