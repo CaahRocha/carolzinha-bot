@@ -6,7 +6,7 @@ module.exports = {
   name: "sexo",
   description: "sexo com a Caah.",
   commands: ["sexoCaah"],
-  usage: `${PREFIX}tiCaah [@alguem]`,
+  usage: `${PREFIX}sexoCaah [@alguem]`,
   /**
    * @param {CommandHandleProps} props
    * @returns {Promise<void>}
