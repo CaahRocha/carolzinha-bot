@@ -52,7 +52,7 @@ module.exports = {
 
     const mensagem = `😈 O nível de capetagem de @${targetNumber} é *${porcentagem}%*.\n💬 Categoria: *${categoria.toUpperCase()}*\n\n${piada}`;
 
-    const imagePath = path.resolve(ASSETS_DIR, "images", "funny", "demonio.png");
+    const imagePath = path.resolve(ASSETS_DIR, "images", "funny", "demonio.mp4");
 
     if (!fs.existsSync(imagePath)) {
       await sendErrorReply("Imagem 'demonio.png' não encontrada. Verifique o caminho ou o arquivo.");
