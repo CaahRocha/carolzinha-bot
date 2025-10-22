@@ -6,17 +6,17 @@ const fs = require("node:fs");
 const { ASSETS_DIR } = require(`${BASE_DIR}/config`);
 
 module.exports = {
-  name: "demonio",
-  description: "Mede o nível de capetagem demoníaca de alguém (com humor e maldade).",
-  commands: ["demonio", "capeta", "encapetado"],
-  usage: `${PREFIX}demonio @usuario`,
+  name: "chapado",
+  description: "Mede o nível de chapação de alguém (com humor e leveza).",
+  commands: ["chapado", "brisado", "fumado"],
+  usage: `${PREFIX}chapado @usuario`,
 
   /**
    * @param {CommandHandleProps} props
    * @returns {Promise<void>}
    */
   handle: async ({
-    sendVideoFromFile, // ✅ alterado para envio de vídeo
+    sendVideoFromFile,
     sendErrorReply,
     userJid,
     replyJid,
@@ -37,25 +37,25 @@ module.exports = {
     let piada;
 
     if (porcentagem <= 20) {
-      categoria = "anjo perdido";
-      piada = "😇 Ainda tem salvação... talvez.";
+      categoria = "careta convicto";
+      piada = "🧘‍♂️ Nem café toma, vive na paz e na meditação.";
     } else if (porcentagem <= 50) {
-      categoria = "capetinha aprendiz";
-      piada = "😈 Já apronta umas, mas ainda pede desculpa.";
+      categoria = "curioso da brisa";
+      piada = "😶‍🌫️ Já deu umas tragadas, mas ainda pergunta se vai dar onda.";
     } else if (porcentagem <= 80) {
-      categoria = "encapetado oficial";
-      piada = "🔥 Já tem carteirinha do inferninho e tudo.";
+      categoria = "brisado funcional";
+      piada = "🌬️ Trabalha chapado, mas entrega tudo no prazo.";
     } else {
-      categoria = "demônio em pessoa";
-      piada = "🚨 Só aparece pra causar! Precisa de 7 exorcismos e 1 banho de sal grosso.";
+      categoria = "nuvem ambulante";
+      piada = "☁️ Vive em outra dimensão. Só volta quando acaba o estoque.";
     }
 
-    const mensagem = `😈 O nível de capetagem de @${targetNumber} é *${porcentagem}%*.\n💬 Categoria: *${categoria.toUpperCase()}*\n\n${piada}`;
+    const mensagem = `🌿 O nível de chapação de @${targetNumber} é *${porcentagem}%*.\n💬 Categoria: *${categoria.toUpperCase()}*\n\n${piada}`;
 
-    const videoPath = path.resolve(ASSETS_DIR, "images", "funny", "demonio.mp4");
+    const videoPath = path.resolve(ASSETS_DIR, "images", "funny", "chapado.mp4"); // ✅ caminho corrigido
 
     if (!fs.existsSync(videoPath)) {
-      await sendErrorReply("Vídeo 'demonio.mp4' não encontrado. Verifique o caminho ou o arquivo.");
+      await sendErrorReply("Vídeo 'chapado.mp4' não encontrado. Verifique o caminho ou o arquivo.");
       return;
     }
 

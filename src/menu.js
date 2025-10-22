@@ -110,6 +110,11 @@ exports.menuMessage = (groupJid) => {
 ▢ • ${prefix}gostosa
 ▢ • ${prefix}pau
 ▢ • ${prefix}puta
+▢ • ${prefix}crente
+▢ • ${prefix}demonio
+▢ • ${prefix}sexo
+▢ • ${prefix}sexoCaah
+▢ • ${prefix}tapa
 ╰━━─「🎡」─━━
 
 ╭━━⪩ IA ⪨━━
