@@ -1,4 +1,3 @@
-
 const path = require("node:path");
 const fs = require("node:fs");
 const {
@@ -494,22 +493,73 @@ exports.getOwnerNumber = () => {
   );
 };
 
-exports.setOwnerLid = (lid) => {
-  const filename = CONFIG_FILE;
-
-  const config = readJSON(filename, {});
-
-  config.owner_lid = lid;
-
-  writeJSON(filename, config, {});
-};
-
 exports.getOwnerLid = () => {
   const filename = CONFIG_FILE;
-
   const config = readJSON(filename, {});
 
   return (
     config.owner_lid || (OWNER_LID !== "219999999999999@lid" ? OWNER_LID : null)
   );
 };
+
+// ------------------ Message count (module-level functions) ------------------
+const MESSAGE_COUNT_FILE = "message-count";
+
+/**
+ * Incrementa contador de mensagens do usuário no grupo
+ * @param {string} groupId
+ * @param {string} memberId
+ */
+exports.incrementMessageCount = (groupId, memberId) => {
+  const filename = MESSAGE_COUNT_FILE;
+  const messageCount = readJSON(filename, {});
+
+  if (!messageCount[groupId]) {
+    messageCount[groupId] = {};
+  }
+
+  messageCount[groupId][memberId] = (messageCount[groupId][memberId] || 0) + 1;
+
+  writeJSON(filename, messageCount, {});
+};
+
+/**
+ * Retorna objeto com contagem de mensagens do grupo
+ * @param {string} groupId
+ * @returns {Object} { memberJid: count }
+ */
+exports.getMessageCountByGroup = (groupId) => {
+  const filename = MESSAGE_COUNT_FILE;
+  const messageCount = readJSON(filename, {});
+  return messageCount[groupId] || {};
+};
+
+/**
+ * Limpa contagem de mensagens de um grupo
+ * @param {string} groupId
+ */
+exports.clearGroupMessageCount = (groupId) => {
+  const filename = MESSAGE_COUNT_FILE;
+  const messageCount = readJSON(filename, {});
+
+  if (messageCount[groupId]) {
+    delete messageCount[groupId];
+    writeJSON(filename, messageCount, {});
+  }
+};
+
+/**
+ * Reseta contagem de um usuário específico no grupo
+ * @param {string} groupId
+ * @param {string} memberId
+ */
+exports.resetUserMessageCount = (groupId, memberId) => {
+  const filename = MESSAGE_COUNT_FILE;
+  const messageCount = readJSON(filename, {});
+
+  if (messageCount[groupId] && messageCount[groupId][memberId] !== undefined) {
+    messageCount[groupId][memberId] = 0;
+    writeJSON(filename, messageCount, {});
+  }
+};
+// -----------------------------------------------------------------------------------

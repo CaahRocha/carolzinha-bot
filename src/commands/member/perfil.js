@@ -1,19 +1,39 @@
-const { toUserJidOrLid, isGroup } = require(`${BASE_DIR}/utils`);
-const { errorLog } = require(`${BASE_DIR}/utils/logger`);
-const { PREFIX, ASSETS_DIR, OWNER_NUMBER } = require(`${BASE_DIR}/config`);
-const { InvalidParameterError } = require(`${BASE_DIR}/errors`);
-const { getProfileImageData } = require(`${BASE_DIR}/services/baileys`);
+const { PREFIX, OWNER_NUMBER } = require('../../config');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const axios = require('axios');
+
+// Helper functions
+const isGroup = (jid) => jid.endsWith('@g.us');
+const toUserJidOrLid = (text) => {
+  const number = text.replace(/[^0-9]/g, '');
+  return `${number}@s.whatsapp.net`;
+};
+
+// Helper to get profile pic
+async function getProfilePic(socket, jid) {
+  try {
+    const ppUrl = await socket.profilePictureUrl(jid, 'image');
+    const response = await axios.get(ppUrl, { responseType: 'arraybuffer' });
+    return {
+      buffer: Buffer.from(response.data),
+      success: true
+    };
+  } catch (error) {
+    console.log("[PERFIL] Erro ao buscar foto:", error);
+    return {
+      buffer: null,
+      success: false
+    };
+  }
+}
 
 module.exports = {
   name: "perfil",
   description: "Mostra informações de um usuário",
   commands: ["perfil", "profile"],
+  type: 'member',
   usage: `${PREFIX}perfil ou perfil @usuario`,
 
-  /**
-   * @param {CommandHandleProps} props
-   * @returns {Promise<void>}
-   */
   handle: async ({
     args,
     socket,
@@ -22,55 +42,39 @@ module.exports = {
     sendErrorReply,
     sendWaitReply,
     sendSuccessReact,
+    sendText
   }) => {
-    if (!isGroup(remoteJid)) {
-      throw new InvalidParameterError("Este comando só pode ser usado em grupo.");
-    }
-
-    const targetJid = args[0] ? toUserJidOrLid(args[0]) : userJid;
-    await sendWaitReply("Carregando perfil...");
-
     try {
-      let profilePicUrl;
-      let userName;
-      let userRole = "Membro";
-
-      try {
-        const { profileImage } = await getProfileImageData(socket, targetJid);
-        profilePicUrl = profileImage || `${ASSETS_DIR}/images/default-user.png`;
-
-        const contactInfo = await socket.onWhatsApp(targetJid);
-        userName = contactInfo[0]?.name || "Usuário Desconhecido";
-      } catch (error) {
-        errorLog(`Erro ao tentar pegar dados do usuário ${targetJid}: ${JSON.stringify(error, null, 2)}`);
-        profilePicUrl = `${ASSETS_DIR}/images/default-user.png`;
-        userName = "Usuário Desconhecido";
+      if (!isGroup(remoteJid)) {
+        await sendErrorReply("Este comando só pode ser usado em grupo.");
+        return;
       }
 
+      const targetJid = args[0] ? toUserJidOrLid(args[0]) : userJid;
+      await sendWaitReply("⏳ Carregando perfil...");
+
+      // Busca foto do perfil
+      const { buffer: profilePic, success: hasProfilePic } = await getProfilePic(socket, targetJid);
+      
+      // Verifica cargo no grupo
       const groupMetadata = await socket.groupMetadata(remoteJid);
       const participant = groupMetadata.participants.find(p => p.id === targetJid);
+      let userRole = "Membro";
 
-      // Verificação da dona (ignora sufixos como @lid)
-      const donoJid = `${OWNER_NUMBER}@s.whatsapp.net`;
-      if (targetJid.toLowerCase().startsWith(OWNER_NUMBER)) {
+      if (targetJid.startsWith(OWNER_NUMBER)) {
         userRole = "Dona";
       } else if (participant?.admin) {
         userRole = "Administrador";
       }
 
-      // Dados aleatórios
+      // Gera dados aleatórios
       const deviceTypes = ["Android", "iOS"];
       const frasesDoDia = [
         "A persistência realiza o impossível.",
         "Você é mais forte do que imagina.",
         "Cada dia é uma nova chance para brilhar.",
         "Confie no processo.",
-        "Seja a mudança que você quer ver no mundo.",
-        "Nada é em vão, tudo é aprendizado.",
-        "A vida é feita de ciclos. Aproveite o seu.",
-        "Coragem é agir com o coração.",
-        "Você está exatamente onde precisa estar.",
-        "Grandes coisas levam tempo. Continue!"
+        "Seja a mudança que você quer ver no mundo."
       ];
 
       const randomDevice = deviceTypes[Math.floor(Math.random() * deviceTypes.length)];
@@ -92,14 +96,20 @@ module.exports = {
 📝 *Frase do dia:* "${fraseDoDia}"`;
 
       await sendSuccessReact();
-      await socket.sendMessage(remoteJid, {
-        image: { url: profilePicUrl },
-        caption: mensagem,
-        mentions: [targetJid],
-      });
+
+      if (hasProfilePic && profilePic) {
+        await socket.sendMessage(remoteJid, {
+          image: profilePic,
+          caption: mensagem,
+          mentions: [targetJid]
+        });
+      } else {
+        await sendText(mensagem, [targetJid]);
+      }
+
     } catch (error) {
-      console.error(error);
-      sendErrorReply("Ocorreu um erro ao tentar verificar o perfil.");
+      console.error("[PERFIL] Erro:", error);
+      await sendErrorReply("❌ Ocorreu um erro ao buscar o perfil.");
     }
   },
 };

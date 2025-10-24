@@ -1,9 +1,9 @@
-
 const { getContent, compareUserJidWithOtherNumber } = require("../utils");
 const { errorLog } = require("../utils/logger");
 const {
   readGroupRestrictions,
   readRestrictedMessageTypes,
+  incrementMessageCount
 } = require("../utils/database");
 const { BOT_NUMBER, OWNER_NUMBER, OWNER_LID } = require("../config");
 
@@ -14,6 +14,18 @@ exports.messageHandler = async (socket, webMessage) => {
     }
 
     const { remoteJid, fromMe, id: messageId } = webMessage.key;
+
+    // Incrementa contador se for mensagem em grupo e não for do bot
+    if (remoteJid?.endsWith('@g.us') && !fromMe) {
+      const userJid = webMessage.key?.participant;
+      if (userJid) {
+        try {
+          await incrementMessageCount(remoteJid, userJid);
+        } catch (err) {
+          errorLog(`Erro ao incrementar contador de mensagens: ${err.message}`);
+        }
+      }
+    }
 
     if (fromMe) {
       return;
