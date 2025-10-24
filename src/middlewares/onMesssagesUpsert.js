@@ -1,4 +1,3 @@
-
 const {
   isAtLeastMinutesInPast,
   GROUP_PARTICIPANT_ADD,
@@ -15,97 +14,106 @@ const { checkIfMemberIsMuted } = require("../utils/database");
 const { messageHandler } = require("./messageHandler");
 const connection = require("../connection");
 
+// Cache para prevenir processamento duplicado
+const processedMessages = new Map();
+const CACHE_TIMEOUT = 5000; // 5 segundos
+
 exports.onMessagesUpsert = async ({ socket, messages, startProcess }) => {
   if (!messages.length) {
     return;
   }
 
   for (const webMessage of messages) {
-    if (DEVELOPER_MODE) {
-      infoLog(
-        `\n\n⪨========== [ MENSAGEM RECEBIDA ] ==========⪩ \n\n${JSON.stringify(
-          messages,
-          null,
-          2
-        )}`
-      );
-    }
-
     try {
+      // Verifica duplicação
+      const messageKey = `${webMessage?.key?.id}:${webMessage?.key?.remoteJid}`;
+      const now = Date.now();
+      
+      if (processedMessages.has(messageKey)) {
+        if (DEVELOPER_MODE) {
+          infoLog(`[DEDUP] Mensagem duplicada ignorada: ${messageKey}`);
+        }
+        continue;
+      }      // ...existing code...
+      
+      const MESSAGE_COUNT_FILE = "message-count";
+      
+      exports.incrementMessageCount = (groupId, memberId) => {
+        const filename = MESSAGE_COUNT_FILE;
+        const messageCount = readJSON(filename, {});
+      
+        if (!messageCount[groupId]) {
+          messageCount[groupId] = {};
+        }
+      
+        messageCount[groupId][memberId] = (messageCount[groupId][memberId] || 0) + 1;
+      
+        writeJSON(filename, messageCount, {});
+        console.log(`[MSG-COUNT] incremented ${memberId} in ${groupId} -> ${messageCount[groupId][memberId]}`);
+      };
+      
+      exports.getMessageCountByGroup = (groupId) => {
+        const filename = MESSAGE_COUNT_FILE;
+        const messageCount = readJSON(filename, {});
+        const result = messageCount[groupId] || {};
+        console.log(`[MSG-COUNT] get for ${groupId} ->`, result);
+        return result;
+      };
+      
+      exports.clearGroupMessageCount = (groupId) => {
+        const filename = MESSAGE_COUNT_FILE;
+        const messageCount = readJSON(filename, {});
+      
+        if (messageCount[groupId]) {
+          delete messageCount[groupId];
+          writeJSON(filename, messageCount, {});
+          console.log(`[MSG-COUNT] cleared ${groupId}`);
+        }
+      };
+      
+      exports.resetUserMessageCount = (groupId, memberId) => {
+        const filename = MESSAGE_COUNT_FILE;
+        const messageCount = readJSON(filename, {});
+      
+        if (messageCount[groupId] && messageCount[groupId][memberId] !== undefined) {
+          messageCount[groupId][memberId] = 0;
+          writeJSON(filename, messageCount, {});
+          console.log(`[MSG-COUNT] reset ${memberId} in ${groupId}`);
+        }
+      };
+
+      // Adiciona ao cache
+      processedMessages.set(messageKey, now);
+      
+      // Limpa mensagens antigas do cache
+      for (const [key, timestamp] of processedMessages.entries()) {
+        if (now - timestamp > CACHE_TIMEOUT) {
+          processedMessages.delete(key);
+        }
+      }
+
+      if (DEVELOPER_MODE) {
+        infoLog(
+          `\n\n⪨========== [ MENSAGEM RECEBIDA ] ==========⪩ \n\n${JSON.stringify(
+            messages,
+            null,
+            2
+          )}`
+        );
+      }
+
       const timestamp = webMessage.messageTimestamp;
 
       if (webMessage?.message) {
-        messageHandler(socket, webMessage);
+        await messageHandler(socket, webMessage);
       }
 
       if (isAtLeastMinutesInPast(timestamp)) {
         continue;
       }
 
-      if (isAddOrLeave.includes(webMessage.messageStubType)) {
-        let action = "";
-        if (webMessage.messageStubType === GROUP_PARTICIPANT_ADD) {
-          action = "add";
-          const randomTimeout = Math.floor(Math.random() * 10000) + 1000;
-          setTimeout(async () => {
-            try {
-              const remoteJid = webMessage?.key?.remoteJid;
-              if (!remoteJid) {
-                return;
-              }
-              const data = await socket.groupMetadata(remoteJid);
-              connection.updateGroupMetadataCache(remoteJid, data);
-            } catch (error) {
-              errorLog(
-                `Erro ao atualizar metadados do grupo: ${error.message}`
-              );
-            }
-          }, randomTimeout);
-        } else if (webMessage.messageStubType === GROUP_PARTICIPANT_LEAVE) {
-          action = "remove";
-        }
-
-        await onGroupParticipantsUpdate({
-          userJid: webMessage.messageStubParameters[0],
-          remoteJid: webMessage.key.remoteJid,
-          socket,
-          action,
-        });
-      } else {
-        if (
-          checkIfMemberIsMuted(
-            webMessage?.key?.remoteJid,
-            webMessage?.key?.participant?.replace(/:[0-9][0-9]|:[0-9]/g, "")
-          )
-        ) {
-          try {
-            const { id, remoteJid, participant } = webMessage.key;
-
-            const deleteKey = {
-              remoteJid,
-              fromMe: false,
-              id,
-              participant,
-            };
-
-            await socket.sendMessage(remoteJid, { delete: deleteKey });
-          } catch (error) {
-            errorLog(
-              `Erro ao deletar mensagem de membro silenciado, provavelmente eu não sou administrador do grupo! ${error.message}`
-            );
-          }
-
-          return;
-        }
-
-        const commonFunctions = loadCommonFunctions({ socket, webMessage });
-
-        if (!commonFunctions) {
-          continue;
-        }
-
-        await dynamicCommand(commonFunctions, startProcess);
-      }
+      // ... resto do código existente ...
+      
     } catch (error) {
       if (badMacHandler.handleError(error, "message-processing")) {
         continue;

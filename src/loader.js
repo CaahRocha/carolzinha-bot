@@ -1,12 +1,21 @@
-
 const { TIMEOUT_IN_MILLISECONDS_BY_EVENT } = require("./config");
 const { onMessagesUpsert } = require("./middlewares/onMesssagesUpsert");
 const path = require("node:path");
-const { errorLog } = require("./utils/logger");
+const { errorLog, infoLog } = require("./utils/logger");
 const { badMacHandler } = require("./utils/badMacHandler");
 
+// Tracking de eventos registrados
+let isLoaded = false;
+
 exports.load = (socket) => {
+  // Previne carregamento duplicado
+  if (isLoaded) {
+    infoLog("Loader já foi inicializado, removendo listeners antigos...");
+    socket.ev.removeAllListeners("messages.upsert");
+  }
+
   global.BASE_DIR = path.resolve(__dirname);
+  
   const safeEventHandler = async (callback, data, eventName) => {
     try {
       await callback(data);
@@ -23,6 +32,7 @@ exports.load = (socket) => {
     }
   };
 
+  // Registra novo listener
   socket.ev.on("messages.upsert", async (data) => {
     const startProcess = Date.now();
     setTimeout(() => {
@@ -39,17 +49,22 @@ exports.load = (socket) => {
     }, TIMEOUT_IN_MILLISECONDS_BY_EVENT);
   });
 
-  process.on("uncaughtException", (error) => {
-    if (badMacHandler.handleError(error, "uncaughtException")) {
-      return;
-    }
-    errorLog(`Erro não capturado: ${error.message}`);
-  });
+  // Registra handlers de erro globais apenas uma vez
+  if (!isLoaded) {
+    process.on("uncaughtException", (error) => {
+      if (badMacHandler.handleError(error, "uncaughtException")) {
+        return;
+      }
+      errorLog(`Erro não capturado: ${error.message}`);
+    });
 
-  process.on("unhandledRejection", (reason) => {
-    if (badMacHandler.handleError(reason, "unhandledRejection")) {
-      return;
-    }
-    errorLog(`Promessa rejeitada não tratada: ${reason}`);
-  });
+    process.on("unhandledRejection", (reason) => {
+      if (badMacHandler.handleError(reason, "unhandledRejection")) {
+        return;
+      }
+      errorLog(`Promessa rejeitada não tratada: ${reason}`);
+    });
+  }
+
+  isLoaded = true;
 };

@@ -1,4 +1,62 @@
+// ...existing code...
 
+// Adicione esta variável no topo do arquivo, após os requires
+let currentSocket = null;
+
+async function connect() {
+  // Se já existe uma conexão, remove os listeners antigos
+  if (currentSocket) {
+    currentSocket.ev.removeAllListeners('connection.update');
+    currentSocket.ev.removeAllListeners('creds.update');
+    currentSocket.ev.removeAllListeners('messages.upsert');
+  }
+
+  const baileysFolder = path.resolve(
+    __dirname,
+    "..",
+    "assets",
+    "auth",
+    "baileys"
+  );
+
+
+
+  const socket = makeWASocket({
+    // ...existing socket options...
+  });
+
+  // Guarda referência do socket atual
+  currentSocket = socket;
+
+  // ...rest of the connection code...
+
+  socket.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect } = update;
+
+    if (connection === "close") {
+      // ...existing disconnect handling...
+      
+      if (statusCode === DisconnectReason.loggedOut) {
+        errorLog("Bot desconectado!");
+        badMacErrorCount = 0;
+      } else {
+        // ...existing reconnect code...
+        
+        // Atualiza referência do socket
+        const newSocket = await connect();
+        currentSocket = newSocket;
+        load(newSocket);
+      }
+    }
+    // ...rest of connection.update handler...
+  });
+
+  socket.ev.on("creds.update", saveCreds);
+
+  return socket;
+}
+
+// ...existing exports...
 const path = require("node:path");
 const { question, onlyNumbers } = require("./utils");
 const {
@@ -102,7 +160,96 @@ async function connect() {
 
   socket.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect } = update;
+// Add at the top with other requires
+const { load } = require("./loader");
 
+// Add these variables at the top level
+let currentSocket = null;
+let isConnecting = false;
+
+async function connect() {
+  // Prevent multiple concurrent connection attempts
+  if (isConnecting) {
+    warningLog("Conexão já em andamento, aguardando...");
+    return currentSocket;
+  }
+
+  try {
+    isConnecting = true;
+
+    // Cleanup previous socket if exists
+    if (currentSocket) {
+      currentSocket.ev.removeAllListeners();
+      currentSocket.end();
+    }
+
+    // ...existing auth state and version code...
+
+    const socket = makeWASocket({
+      // ...existing socket options...
+    });
+
+    currentSocket = socket;
+
+    // Move connection.update handler to separate function
+    socket.ev.on("connection.update", async (update) => {
+      const { connection, lastDisconnect } = update;
+
+      if (connection === "close") {
+        const error = lastDisconnect?.error;
+        const statusCode = error?.output?.statusCode;
+
+        // Handle Bad MAC errors
+        if (error?.message?.includes("Bad MAC") || error?.toString()?.includes("Bad MAC")) {
+          errorLog("Bad MAC error na desconexão detectado");
+          if (badMacHandler.handleError(error, "connection.update")) {
+            if (badMacHandler.hasReachedLimit()) {
+              warningLog("Limite de erros Bad MAC atingido. Limpando sessão...");
+              badMacHandler.clearProblematicSessionFiles();
+              badMacHandler.resetErrorCount();
+              
+              // Reconnect with clean state
+              currentSocket = null;
+              const newSocket = await connect();
+              await load(newSocket);
+              return;
+            }
+          }
+        }
+
+        // Handle other disconnect reasons
+        if (statusCode === DisconnectReason.loggedOut) {
+          errorLog("Bot desconectado!");
+          badMacErrorCount = 0;
+        } else {
+          // ...existing disconnect reason handling...
+
+          // Clean reconnect
+          currentSocket = null;
+          const newSocket = await connect();
+          await load(newSocket);
+        }
+      } else if (connection === "open") {
+        successLog("Fui conectado com sucesso!");
+        infoLog("Versão do WhatsApp Web: " + version.join("."));
+        infoLog("É a última versão do WhatsApp Web?: " + (isLatest ? "Sim" : "Não"));
+        badMacErrorCount = 0;
+        badMacHandler.resetErrorCount();
+      } else {
+        infoLog("Atualizando conexão...");
+      }
+    });
+
+    socket.ev.on("creds.update", saveCreds);
+
+    return socket;
+
+  } finally {
+    isConnecting = false;
+  }
+}
+
+// ...rest of existing exports...
     if (connection === "close") {
       const error = lastDisconnect?.error;
       const statusCode = error?.output?.statusCode;
